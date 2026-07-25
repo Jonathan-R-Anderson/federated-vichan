@@ -84,6 +84,33 @@ colored by priority, with per-priority counts. Also available via `docker logs v
 
 ---
 
+## NSFW image filtering (open_nsfw)
+
+The `nsfw` service scores every uploaded image with **Yahoo's open_nsfw** model (via the
+`opennsfw2` TensorFlow port, same weights). `post.php` sends each image to it and applies the
+board's policy before the post is accepted.
+
+**Configure it** in the mod panel at **`?/nsfw`** (admin): a site-wide default plus per-board
+overrides, each with a score **threshold** (0–1) and an **action** — **reject** (block the
+post, default) or **spoiler** (allow it but force the thumbnail to a spoiler). Policy lives in
+the `nsfw_settings` table (the empty-`board` row is the site-wide default). Env defaults:
+
+| Variable | Default | Meaning |
+|---|---|---|
+| `VICHAN_NSFW_ENABLED` | `1` | Master switch (feature + upload hook). |
+| `VICHAN_NSFW_DEFAULT_ENABLED` | `1` | Apply to all boards until a policy row exists. |
+| `VICHAN_NSFW_THRESHOLD` | `0.8` | Score at/above which an image counts as NSFW. |
+| `VICHAN_NSFW_ACTION` | `reject` | `reject` or `spoiler`. |
+| `VICHAN_NSFW_FAIL_CLOSED` | `0` | `0` = allow uploads if the scorer is down; `1` = reject. |
+
+**RAM / build.** The service runs TensorFlow-CPU (~0.5–1 GB RAM) and its image is large; the
+**build downloads the model weights once**, and the first request after start waits for the
+model to load. On a small host set `VICHAN_NSFW_ENABLED=0`. It fails **open** by default.
+
+**Scope.** open_nsfw classifies *explicit* imagery — a strong automated first filter, not a
+detector of illegal content (that needs specialised hash-matching such as PhotoDNA). Pair it
+with the perceptual-hash banlist and human moderation.
+
 ## Deploy
 
 Normal flow: `git pull` && `docker compose up --build`. New persistent dirs

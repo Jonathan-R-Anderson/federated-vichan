@@ -322,6 +322,23 @@
 	// (mounted read-only into the php container); the mod panel (?/falco) reads and displays them.
 	$config['falco']['log'] = getenv('VICHAN_FALCO_LOG') ?: '/var/falco/events.log';
 
+	// NSFW image filtering (Yahoo open_nsfw via the `nsfw` service, inc/nsfw.php). Uploaded images
+	// are scored 0-1; per-board policy (managed at ?/nsfw, stored in `nsfw_settings`) decides
+	// whether to reject or spoiler an image at or above the threshold. The values here are the
+	// master switch plus the fallback defaults used until a policy row exists.
+	$config['nsfw'] = [
+		'available'       => (bool)(getenv('VICHAN_NSFW_ENABLED') ?: false),
+		'host'            => getenv('VICHAN_NSFW_HOST') ?: 'nsfw',
+		'port'            => (int)(getenv('VICHAN_NSFW_PORT') ?: 8080),
+		'timeout'         => 20,
+		'default_enabled' => (bool)(getenv('VICHAN_NSFW_DEFAULT_ENABLED') ?: false),
+		'threshold'       => (float)(getenv('VICHAN_NSFW_THRESHOLD') ?: 0.8),
+		'action'          => getenv('VICHAN_NSFW_ACTION') === 'spoiler' ? 'spoiler' : 'reject',
+		'fail_closed'     => (bool)(getenv('VICHAN_NSFW_FAIL_CLOSED') ?: false),
+	];
+	$config['error']['nsfw_found'] = 'Upload rejected: this image is classified as NSFW (%d%% confidence). This board filters explicit content.';
+	$config['error']['nsfw_error'] = 'Image screening is temporarily unavailable. Please try again shortly.';
+
 	$config['captcha'] = [
 		// Can be false, 'recaptcha', 'hcaptcha', 'native' or 'anime'.
 		// - 'native' is the self-hosted distorted-text captcha.
@@ -1458,6 +1475,7 @@
 	$config['file_mod_noticeboard'] = 'mod/noticeboard.html';
 	$config['file_mod_captcha'] = 'mod/captcha.html';
 	$config['file_mod_falco'] = 'mod/falco.html';
+	$config['file_mod_nsfw'] = 'mod/nsfw.html';
 	$config['file_mod_boardlinks'] = 'mod/boardlinks.html';
 	$config['file_mod_image_hashes'] = 'mod/image_hashes.html';
 	$config['file_mod_emergency'] = 'mod/emergency.html';
@@ -1914,6 +1932,8 @@
 	$config['mod']['manage_captcha'] = ADMIN;
 	// View the Falco runtime-security alert feed (?/falco).
 	$config['mod']['view_falco'] = ADMIN;
+	// Manage the NSFW image-filter policy (?/nsfw).
+	$config['mod']['manage_nsfw'] = ADMIN;
 	// Manage the navigation boardlinks bar (?/boardlinks)
 	$config['mod']['edit_boardlinks'] = ADMIN;
 	// Manage the perceptual image-hash blacklist (?/image-hashes)

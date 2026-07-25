@@ -1,0 +1,8 @@
+# open_nsfw scoring service dependencies.
+# opennsfw2 is the maintained TensorFlow-2 port of Yahoo's open_nsfw (same weights).
+opennsfw2
+tensorflow-cpu
+pillow
+numpy
+flask
+gunicorn

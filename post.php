@@ -1090,6 +1090,36 @@ if (isset($_POST['delete'])) {
 		do_filters($post);
 	}
 
+	// NSFW image screening (Yahoo open_nsfw via the `nsfw` service). Runs on the still-untouched
+	// uploads before any file is moved, so a reject leaves nothing to clean up. Per-board policy
+	// (managed at ?/nsfw) sets the threshold and whether to reject or force-spoiler the image.
+	if ($post['has_file'] && !$dropped_post && !empty($config['nsfw']['available'])) {
+		require_once 'inc/nsfw.php';
+		$nsfw_policy = nsfw_config_for_board($config, $board['uri']);
+		if (!empty($nsfw_policy['enabled'])) {
+			foreach ($post['files'] as &$nsfw_file) {
+				if (empty($nsfw_file['is_an_image']))
+					continue;
+				$nsfw_res = nsfw_score_file($config, $nsfw_file['tmp_name']);
+				if ($nsfw_res['status'] !== 'ok') {
+					error_log('vichan: NSFW scan error on /' . $board['uri'] . '/: ' . (isset($nsfw_res['error']) ? $nsfw_res['error'] : 'unknown'));
+					if (!empty($nsfw_policy['fail_closed']))
+						error($config['error']['nsfw_error']);
+					continue;
+				}
+				if ($nsfw_res['score'] >= $nsfw_policy['threshold']) {
+					if ($nsfw_policy['action'] === 'spoiler') {
+						$nsfw_file['force_spoiler'] = true;
+					} else {
+						error_log('vichan: NSFW upload rejected on /' . $board['uri'] . '/ (score ' . round($nsfw_res['score'], 3) . ')');
+						error(sprintf($config['error']['nsfw_found'], (int)round($nsfw_res['score'] * 100)));
+					}
+				}
+			}
+			unset($nsfw_file);
+		}
+	}
+
 	if ($post['has_file']) {
 		foreach ($post['files'] as $key => &$file) {
 		if ($file['is_an_image']) {
@@ -1148,7 +1178,7 @@ if (isset($_POST['delete'])) {
 			$file['width'] = $image->size->width;
 			$file['height'] = $image->size->height;
 
-			if ($config['spoiler_images'] && isset($_POST['spoiler'])) {
+			if ($config['spoiler_images'] && (isset($_POST['spoiler']) || !empty($file['force_spoiler']))) {
 				$file['thumb'] = 'spoiler';
 
 				$size = @getimagesize($config['spoiler_image']);

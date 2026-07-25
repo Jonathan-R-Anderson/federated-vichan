@@ -56,6 +56,7 @@ $pages = [
 	'/captcha'				=> 'secure_POST captcha',	// manage anime captcha challenges
 	'/captcha/delete/(\d+)'			=> 'secure captcha_delete',	// delete an anime captcha challenge
 	'/falco'				=> 'falco',			// Falco runtime-security alert feed
+	'/nsfw'					=> 'secure_POST nsfw',		// NSFW image-filter policy
 
 	'/boardlinks'				=> 'secure_POST boardlinks',	// manage navigation boardlinks
 	'/boardlinks/delete/(\d+)'		=> 'secure boardlinks_delete',	// delete a boardlink

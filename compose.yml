@@ -52,6 +52,15 @@ services:
       VICHAN_CLAMAV_HOST: ${VICHAN_CLAMAV_HOST:-clamav}
       VICHAN_CLAMAV_PORT: ${VICHAN_CLAMAV_PORT:-3310}
       VICHAN_CLAMAV_FAIL_CLOSED: ${VICHAN_CLAMAV_FAIL_CLOSED:-0}
+      # NSFW image filtering (Yahoo open_nsfw). Per-board policy is managed at ?/nsfw; these are
+      # the master switch (ENABLED) and the fallback defaults used until a policy row exists.
+      VICHAN_NSFW_ENABLED: ${VICHAN_NSFW_ENABLED:-0}
+      VICHAN_NSFW_HOST: ${VICHAN_NSFW_HOST:-nsfw}
+      VICHAN_NSFW_PORT: ${VICHAN_NSFW_PORT:-8080}
+      VICHAN_NSFW_DEFAULT_ENABLED: ${VICHAN_NSFW_DEFAULT_ENABLED:-0}
+      VICHAN_NSFW_THRESHOLD: ${VICHAN_NSFW_THRESHOLD:-0.8}
+      VICHAN_NSFW_ACTION: ${VICHAN_NSFW_ACTION:-reject}
+      VICHAN_NSFW_FAIL_CLOSED: ${VICHAN_NSFW_FAIL_CLOSED:-0}
       # Cookies
       VICHAN_COOKIES_MOD: ${VICHAN_COOKIES_MOD}
       # Flood Control
@@ -76,6 +85,7 @@ services:
     depends_on:
       - db
       - clamav
+      - nsfw
 
   db:
     image: mysql:lts
@@ -146,6 +156,20 @@ services:
       - ./local-instances/${INSTANCE:-0}/falco:/var/log/falco
     environment:
       - HOST_ROOT=/host
+
+  # NSFW image classifier — Yahoo open_nsfw (via the opennsfw2 TensorFlow port). post.php scores
+  # each uploaded image against this service and applies the per-board policy set at ?/nsfw
+  # (reject or spoiler). Internal only (no host port). NOTE: TensorFlow needs real RAM
+  # (~0.5-1 GB) and the image is large; the build downloads the model weights once. Leave
+  # VICHAN_NSFW_ENABLED=0 on a small host to keep it off.
+  nsfw:
+    build:
+      context: ./docker/nsfw
+      dockerfile: Dockerfile
+    container_name: vichan_nsfw
+    restart: unless-stopped
+    expose:
+      - "8080"
 
   # One-shot schema migration. `docker compose up` rebuilds code but never applies
   # install.sql, so tables added to the schema later (e.g. nntp_settings, deleted_thread)

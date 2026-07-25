@@ -73,6 +73,9 @@
 		{% if mod|hasPermission(config.mod.view_falco) %}
 			<li><a href="?/falco">{% trans 'Security alerts (Falco)' %}</a></li>
 		{% endif %}
+		{% if mod|hasPermission(config.mod.manage_nsfw) %}
+			<li><a href="?/nsfw">{% trans 'NSFW image filter' %}</a></li>
+		{% endif %}
 		{% if mod|hasPermission(config.mod.edit_boardlinks) %}
 			<li><a href="?/boardlinks">{% trans 'Boardlinks' %}</a></li>
 		{% endif %}

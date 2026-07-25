@@ -371,6 +371,24 @@ CREATE TABLE IF NOT EXISTS `nntp_groupmap` (
 -- --------------------------------------------------------
 
 --
+-- Table structure for table `nsfw_settings`
+--
+-- Per-board NSFW-filter policy (Yahoo open_nsfw scoring, see inc/nsfw.php). The row with an
+-- empty `board` is the site-wide default applied to every board that has no row of its own;
+-- a board-specific row overrides it. `action` is 'reject' or 'spoiler'.
+--
+CREATE TABLE IF NOT EXISTS `nsfw_settings` (
+  `board` VARCHAR(58) NOT NULL DEFAULT '',
+  `enabled` TINYINT(1) NOT NULL DEFAULT 0,
+  `threshold` FLOAT NOT NULL DEFAULT 0.8,
+  `action` VARCHAR(16) NOT NULL DEFAULT 'reject',
+  `updated` INT(11) NOT NULL DEFAULT 0,
+  PRIMARY KEY (`board`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- --------------------------------------------------------
+
+--
 -- Table structure for table `nntp_ban_tombstone`
 --
 -- Records image-ban fingerprints that were federated-unbanned, so a later (out-of-order)

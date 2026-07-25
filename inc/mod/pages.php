@@ -991,6 +991,98 @@ function mod_falco(Context $ctx) {
 	);
 }
 
+function mod_nsfw(Context $ctx) {
+	global $mod;
+	$config = $ctx->get('config');
+
+	if (!hasPermission($config['mod']['manage_nsfw']))
+		error($config['error']['noaccess']);
+
+	require_once 'inc/nsfw.php';
+
+	// Upsert a policy row (board = '' is the site-wide default).
+	$upsert = function ($board_key) {
+		$threshold = (float)($_POST['threshold'] ?? 0.8);
+		if ($threshold < 0.05) $threshold = 0.05;
+		if ($threshold > 1.0) $threshold = 1.0;
+		$action = (($_POST['nsfw_action'] ?? '') === 'spoiler') ? 'spoiler' : 'reject';
+		$enabled = isset($_POST['enabled']) ? 1 : 0;
+
+		$q = prepare('INSERT INTO `nsfw_settings` (`board`, `enabled`, `threshold`, `action`, `updated`)
+			VALUES (:b, :e, :t, :a, :u)
+			ON DUPLICATE KEY UPDATE `enabled` = :e2, `threshold` = :t2, `action` = :a2, `updated` = :u2');
+		$q->bindValue(':b', $board_key);
+		$q->bindValue(':e', $enabled, PDO::PARAM_INT);
+		$q->bindValue(':t', $threshold);
+		$q->bindValue(':a', $action);
+		$q->bindValue(':u', time(), PDO::PARAM_INT);
+		$q->bindValue(':e2', $enabled, PDO::PARAM_INT);
+		$q->bindValue(':t2', $threshold);
+		$q->bindValue(':a2', $action);
+		$q->bindValue(':u2', time(), PDO::PARAM_INT);
+		$q->execute() or error(db_error($q));
+	};
+
+	if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+		$action = $_POST['action'] ?? '';
+		switch ($action) {
+			case 'save_default':
+				$upsert('');
+				modLog('Updated the default NSFW filter policy');
+				break;
+			case 'save_board':
+				$b = strtolower(preg_replace('/[^a-z0-9_.-]/i', '', trim($_POST['board'] ?? '')));
+				if ($b === '')
+					error(_('Choose a board.'));
+				$upsert($b);
+				modLog('Updated the NSFW filter policy for /' . $b . '/');
+				break;
+			case 'delete_board':
+				$d = prepare("DELETE FROM `nsfw_settings` WHERE `board` = :b AND `board` <> ''");
+				$d->bindValue(':b', trim($_POST['board'] ?? ''));
+				$d->execute() or error(db_error($d));
+				modLog('Removed the NSFW filter override for /' . trim($_POST['board'] ?? '') . '/');
+				break;
+			default:
+				error($config['error']['noaccess']);
+		}
+		header('Location: ?/nsfw', true, $config['redirect_http']);
+		return;
+	}
+
+	// Site-wide default (config fallback, overridden by the board = '' row if present).
+	$default = array(
+		'enabled'   => !empty($config['nsfw']['default_enabled']),
+		'threshold' => (float)$config['nsfw']['threshold'],
+		'action'    => $config['nsfw']['action'],
+	);
+	$overrides = array();
+	$rows = query("SELECT `board`, `enabled`, `threshold`, `action` FROM `nsfw_settings` ORDER BY `board`");
+	if ($rows) foreach ($rows->fetchAll(PDO::FETCH_ASSOC) as $r) {
+		if ($r['board'] === '') {
+			$default = array('enabled' => (bool)$r['enabled'], 'threshold' => (float)$r['threshold'], 'action' => $r['action']);
+		} else {
+			$r['enabled'] = (bool)$r['enabled'];
+			$r['delete_token'] = make_secure_link_token('nsfw');
+			$overrides[] = $r;
+		}
+	}
+
+	mod_page(
+		_('NSFW image filter'),
+		$config['file_mod_nsfw'],
+		array(
+			'available'  => !empty($config['nsfw']['available']),
+			'service_ok' => !empty($config['nsfw']['available']) ? nsfw_service_ping($config) : false,
+			'default'    => $default,
+			'overrides'  => $overrides,
+			'boards'     => listBoards(),
+			'token'      => make_secure_link_token('nsfw'),
+		),
+		$mod
+	);
+}
+
 function mod_boardlinks(Context $ctx) {
 	global $mod;
 	$config = $ctx->get('config');

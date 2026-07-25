@@ -1,0 +1,100 @@
+<style>
+/* Inlined so it renders regardless of stylesheet caching. */
+.nsfw-status { padding: 6px 10px; border-radius: 4px; margin: 6px 0 14px; font-size: 13px; }
+.nsfw-ok { background: #e6f4e6; border: 1px solid #7bc47b; }
+.nsfw-warn { background: #fdecea; border: 1px solid #e0a3a0; }
+.nsfw-form { margin: 0 0 8px; }
+table.nsfw-boards { border-collapse: collapse; margin-top: 4px; }
+table.nsfw-boards th, table.nsfw-boards td { border: 1px solid #ccc; padding: 4px 8px; font-size: 13px; text-align: left; }
+.nsfw-pill { display: inline-block; padding: 1px 8px; border-radius: 10px; color: #fff; font: bold 11px/16px sans-serif; }
+.nsfw-on { background: #2a8a2a; } .nsfw-off { background: #999; }
+.nsfw-reject { background: #b32020; } .nsfw-spoiler { background: #c76a1a; }
+label.nsfw-inline { margin-right: 14px; }
+</style>
+
+<p class="unimportant" style="text-align:center;word-wrap:break-word">
+	{% trans 'Automatically screen uploaded images with the open_nsfw classifier. Set a site-wide default, then override it per board.' %}
+</p>
+
+{% if not available %}
+	<div class="nsfw-status nsfw-warn">
+		{% trans 'The NSFW filter is turned off (VICHAN_NSFW_ENABLED=0). Enable it in your environment and start the nsfw service to use these controls.' %}
+	</div>
+{% elseif service_ok %}
+	<div class="nsfw-status nsfw-ok">{% trans 'Scoring service: reachable and ready.' %}</div>
+{% else %}
+	<div class="nsfw-status nsfw-warn">
+		{% trans 'Scoring service: not reachable. It may still be loading the model (this takes a minute on first start), or the nsfw container may be down.' %}
+	</div>
+{% endif %}
+
+<fieldset>
+	<legend>{% trans 'Site-wide default' %}</legend>
+	<p class="unimportant" style="margin:0 0 6px">{% trans 'Applies to every board that has no override below.' %}</p>
+	<form action="?/nsfw" method="post" class="nsfw-form">
+		<input type="hidden" name="token" value="{{ token }}">
+		<input type="hidden" name="action" value="save_default">
+		<label class="nsfw-inline"><input type="checkbox" name="enabled" value="1"{% if default.enabled %} checked{% endif %}> {% trans 'Enabled' %}</label>
+		<label class="nsfw-inline">{% trans 'Threshold' %}: <input type="number" name="threshold" min="0.05" max="1" step="0.05" value="{{ default.threshold }}" style="width:5em"></label>
+		<label class="nsfw-inline">{% trans 'Action' %}:
+			<select name="nsfw_action">
+				<option value="reject"{% if default.action != 'spoiler' %} selected{% endif %}>{% trans 'reject the post' %}</option>
+				<option value="spoiler"{% if default.action == 'spoiler' %} selected{% endif %}>{% trans 'spoiler the image' %}</option>
+			</select>
+		</label>
+		<button type="submit">{% trans 'Save default' %}</button>
+	</form>
+</fieldset>
+
+<fieldset>
+	<legend>{% trans 'Per-board overrides' %}</legend>
+	{% if overrides %}
+		<table class="nsfw-boards">
+			<tr>
+				<th>{% trans 'Board' %}</th><th>{% trans 'Status' %}</th>
+				<th>{% trans 'Threshold' %}</th><th>{% trans 'Action' %}</th><th></th>
+			</tr>
+			{% for o in overrides %}
+				<tr>
+					<td>/{{ o.board|e }}/</td>
+					<td><span class="nsfw-pill {% if o.enabled %}nsfw-on{% else %}nsfw-off{% endif %}">{% if o.enabled %}{% trans 'on' %}{% else %}{% trans 'off' %}{% endif %}</span></td>
+					<td>{{ o.threshold }}</td>
+					<td><span class="nsfw-pill {% if o.action == 'spoiler' %}nsfw-spoiler{% else %}nsfw-reject{% endif %}">{{ o.action|e }}</span></td>
+					<td>
+						<form action="?/nsfw" method="post" style="display:inline" onsubmit="return confirm('{% trans 'Remove this override (board reverts to the default)?' %}');">
+							<input type="hidden" name="token" value="{{ token }}">
+							<input type="hidden" name="action" value="delete_board">
+							<input type="hidden" name="board" value="{{ o.board|e }}">
+							<button type="submit">{% trans 'Remove' %}</button>
+						</form>
+					</td>
+				</tr>
+			{% endfor %}
+		</table>
+	{% else %}
+		<p class="unimportant">{% trans 'No per-board overrides — every board uses the default above.' %}</p>
+	{% endif %}
+
+	<form action="?/nsfw" method="post" class="nsfw-form" style="margin-top:10px">
+		<input type="hidden" name="token" value="{{ token }}">
+		<input type="hidden" name="action" value="save_board">
+		<label class="nsfw-inline">{% trans 'Board' %}:
+			<select name="board">
+				{% for b in boards %}<option value="{{ b.uri|e }}">/{{ b.uri|e }}/ &mdash; {{ b.title|e }}</option>{% endfor %}
+			</select>
+		</label>
+		<label class="nsfw-inline"><input type="checkbox" name="enabled" value="1" checked> {% trans 'Enabled' %}</label>
+		<label class="nsfw-inline">{% trans 'Threshold' %}: <input type="number" name="threshold" min="0.05" max="1" step="0.05" value="{{ default.threshold }}" style="width:5em"></label>
+		<label class="nsfw-inline">{% trans 'Action' %}:
+			<select name="nsfw_action">
+				<option value="reject">{% trans 'reject the post' %}</option>
+				<option value="spoiler">{% trans 'spoiler the image' %}</option>
+			</select>
+		</label>
+		<button type="submit">{% trans 'Add / update board' %}</button>
+	</form>
+</fieldset>
+
+<p class="unimportant" style="word-wrap:break-word">
+	{% trans 'Threshold is the classifier score (0-1) at or above which an image counts as NSFW — higher is stricter with fewer false positives (0.8 is a sensible starting point). "Reject" blocks the post; "spoiler" lets it through but hides the thumbnail behind a spoiler.' %}
+</p>

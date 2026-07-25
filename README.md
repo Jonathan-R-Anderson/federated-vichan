@@ -224,6 +224,30 @@ normal activity (thumbnailing, healthchecks) doesn't cry wolf. Alerts are writte
 and surfaced **right in the mod panel at `?/falco`** — priority-coloured and newest-first —
 so staff can see what the host is doing without needing shell access to it.
 
+### Automated NSFW / explicit-content filtering (open_nsfw)
+
+A dedicated ML service scores every uploaded image with **Yahoo's open_nsfw** deep-learning
+model (run via the maintained `opennsfw2` port of the original weights), giving each image a
+0–1 probability of being explicit. It is a **more sophisticated automated line of defense than
+static filters** for keeping prohibited imagery off the boards:
+
+- Where the perceptual-hash banlist only catches *known* images (ones an operator has already
+  seen and banned), open_nsfw **classifies images it has never seen** — so a brand-new explicit
+  upload can be caught automatically, before a human ever lays eyes on it.
+- Policy is **per board**, configured from the mod panel at **`?/nsfw`**: a site-wide default
+  plus per-board overrides, each with its own score **threshold** and **action** — either
+  *reject* the post outright, or *spoiler* the image (let it through but hide the thumbnail).
+- It runs as an isolated sidecar service that the board simply asks for a score. It fails
+  **open** by default (a scorer outage never blocks posting) and can be set to fail closed.
+
+**What it is — and isn't.** open_nsfw is a heuristic classifier for *explicit / pornographic*
+imagery: a strong automated first filter, **not** a legal-content oracle. It does not
+"detect illegal content" in any authoritative sense — identifying material such as CSAM
+requires specialised hash-matching services (e.g. PhotoDNA), and human review remains
+essential. Treat it as a **force-multiplier for moderators**: it removes the bulk of obvious
+explicit uploads automatically so staff can spend their time on the genuinely hard cases,
+layered together with the perceptual-hash banlist, the filter engine, and human moderation.
+
 ### Abuse prevention
 
 - **Captcha** — reCAPTCHA, hCaptcha, a self-hosted distorted-text captcha, or a self-hosted
