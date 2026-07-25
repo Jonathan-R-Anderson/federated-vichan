@@ -336,8 +336,11 @@
 		'action'          => getenv('VICHAN_NSFW_ACTION') === 'spoiler' ? 'spoiler' : 'reject',
 		'fail_closed'     => (bool)(getenv('VICHAN_NSFW_FAIL_CLOSED') ?: false),
 	];
-	$config['error']['nsfw_found'] = 'Upload rejected: this image is classified as NSFW (%d%% confidence). This board filters explicit content.';
-	$config['error']['nsfw_error'] = 'Image screening is temporarily unavailable. Please try again shortly.';
+	$config['error']['nsfw_found'] = 'Upload rejected: NSFW content was detected (%d%% confidence). This board filters explicit content.';
+	// Shown when the scanner errors under fail-closed: report it to the poster as a detection
+	// (not a system error), so an outage isn't a signal that filtering can be bypassed. The real
+	// reason is still written to the server log for admins.
+	$config['error']['nsfw_error'] = 'Upload rejected: NSFW content was detected. This board filters explicit content.';
 
 	$config['captcha'] = [
 		// Can be false, 'recaptcha', 'hcaptcha', 'native' or 'anime'.
