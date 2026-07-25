@@ -20,6 +20,8 @@ EXPOSE 8080
 HEALTHCHECK --interval=30s --timeout=10s --start-period=90s --retries=5 \
     CMD curl -fsS http://127.0.0.1:8080/healthz || exit 1
 
-# One worker (the model is large; each worker would load its own copy), a few threads for
-# concurrency. --preload loads the model before forking.
-CMD ["gunicorn", "--preload", "-w", "1", "--threads", "4", "-b", "0.0.0.0:8080", "--timeout", "120", "app:app"]
+# One sync worker. IMPORTANT: do NOT use --preload (and do not load the model in the master):
+# TensorFlow does not survive gunicorn's fork, so a preloaded model deadlocks on the first
+# inference in the worker. Without --preload the worker imports app.py — and loads the model —
+# in its own post-fork process, which works. The model is large, so keep it to one worker.
+CMD ["gunicorn", "-w", "1", "-b", "0.0.0.0:8080", "--timeout", "120", "app:app"]

@@ -55,8 +55,10 @@ def score():
         # Yahoo preprocessing (resize to 256, center-crop 224, BGR mean subtraction).
         preprocessed = n2.preprocess_image(image, n2.Preprocessing.YAHOO)
         batch = np.expand_dims(preprocessed, axis=0)
-        preds = _model.predict(batch, verbose=0)
-        nsfw_probability = float(preds[0][1])  # column 1 = NSFW
+        # Call the model directly rather than .predict(): predict() builds a fresh execution
+        # function per call and misbehaves in a served/threaded context.
+        preds = _model(batch, training=False)
+        nsfw_probability = float(preds.numpy()[0][1])  # column 1 = NSFW
     except Exception as exc:  # noqa: BLE001 - report any inference failure to the caller
         return jsonify(error="inference failed: %s" % exc), 500
 
