@@ -103,9 +103,13 @@ the `nsfw_settings` table (the empty-`board` row is the site-wide default). Env 
 | `VICHAN_NSFW_ACTION` | `reject` | `reject` or `spoiler`. |
 | `VICHAN_NSFW_FAIL_CLOSED` | `0` | `0` = allow uploads if the scorer is down; `1` = reject. |
 
-**RAM / build.** The service runs TensorFlow-CPU (~0.5–1 GB RAM) and its image is large; the
-**build downloads the model weights once**, and the first request after start waits for the
-model to load. On a small host set `VICHAN_NSFW_ENABLED=0`. It fails **open** by default.
+**Requirements.** The service runs TensorFlow-CPU, which **requires a CPU with AVX** and
+~0.5–1 GB RAM (the image is large). On a host without AVX — e.g. a QEMU/KVM VM that doesn't pass
+the host CPU through — the container exits with `Illegal instruction` (SIGILL) at model load and
+restart-loops. Run it on a host with AVX (bare metal, or a VM with host-CPU passthrough); if the
+host has no AVX, leave `VICHAN_NSFW_ENABLED=0` and stop the `nsfw` container. The model weights
+download on first use. It fails **open** by default, so even a missing/crash-looping scorer
+never blocks posting.
 
 **Scope.** open_nsfw classifies *explicit* imagery — a strong automated first filter, not a
 detector of illegal content (that needs specialised hash-matching such as PhotoDNA). Pair it

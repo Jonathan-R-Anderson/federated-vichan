@@ -10,9 +10,15 @@ WORKDIR /app
 COPY requirements.txt /app/requirements.txt
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Bake the model weights into the image so the first request doesn't have to download them
-# (opennsfw2 fetches them the first time make_open_nsfw_model() runs).
-RUN python -c "import opennsfw2 as n2; n2.make_open_nsfw_model()"
+# NOTE: we do NOT run the model at build time. TensorFlow's wheels require AVX CPU
+# instructions, so executing it during `docker build` crashes ("Illegal instruction") on hosts
+# without AVX — e.g. QEMU/KVM VMs that don't pass the host CPU through — which would fail the
+# whole build. opennsfw2 downloads the (small) weights on first use at runtime instead.
+#
+# The service still REQUIRES AVX *to run*: on a CPU without it the container exits with SIGILL
+# at model load and will restart-loop. Run this service on a host with AVX (bare metal or a VM
+# with host-CPU passthrough); if your host has no AVX, leave VICHAN_NSFW_ENABLED=0 and stop the
+# nsfw container. See docker/security.md.
 
 COPY app.py /app/app.py
 
