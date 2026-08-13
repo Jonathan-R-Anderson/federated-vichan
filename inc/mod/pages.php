@@ -861,6 +861,21 @@ function mod_captcha(Context $ctx) {
 				modLog("Mirrored $done captcha image(s)");
 				break;
 
+			case 'set_active':
+				// Turn the anime captcha on/off site-wide. inc/config.php reads this flag file to
+				// set the captcha provider; boards must be rebuilt afterwards to apply the change.
+				if (isset($_POST['active'])) {
+					@file_put_contents('inc/captcha_active.flag', '1');
+					modLog('Activated the anime captcha');
+				} else {
+					@unlink('inc/captcha_active.flag');
+					modLog('Deactivated the anime captcha');
+				}
+				// Drop cached config so the next page load reflects the change.
+				if (class_exists('Cache')) { Cache::flush(); }
+				@unlink('tmp/cache/cache_config.php');
+				break;
+
 			default:
 				error($config['error']['noaccess']);
 		}
@@ -890,12 +905,15 @@ function mod_captcha(Context $ctx) {
 	$ext = query("SELECT COUNT(*) FROM `captcha_grid_images` WHERE `image_url` LIKE 'http%'");
 	$external_remaining = $ext ? (int)$ext->fetchColumn() : 0;
 
+	$captcha_active = (@trim((string)@file_get_contents('inc/captcha_active.flag')) === '1');
+
 	mod_page(
 		_('Captcha challenges'),
 		$config['file_mod_captcha'],
 		[
 			'categories' => $categories,
 			'external_remaining' => $external_remaining,
+			'active' => $captcha_active,
 			'token' => make_secure_link_token('captcha'),
 		],
 		$mod

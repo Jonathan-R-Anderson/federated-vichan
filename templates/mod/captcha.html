@@ -29,6 +29,22 @@
 	{% trans 'The "anime" captcha shows a grid of images and asks the poster to pick the ones matching a prompt. Each set below is one such challenge. A <span class="ans-key correct">&#10003;</span> marks a correct answer (the poster should select it); a <span class="ans-key wrong">&#10007;</span> marks a decoy. Click images to select them, then remove them with "Delete selected".' %}
 </p>
 
+<fieldset>
+	<legend>{% trans 'Activation' %}</legend>
+	<form action="?/captcha" method="post" style="margin:0">
+		<input type="hidden" name="token" value="{{ token }}">
+		<input type="hidden" name="action" value="set_active">
+		<label><input type="checkbox" name="active" value="1"{% if active %} checked{% endif %}> <strong>{% trans 'Enable the anime image-grid captcha site-wide' %}</strong></label>
+		<button type="submit">{% trans 'Save' %}</button>
+		{% if active %}<span class="ans-key correct" style="margin-left:8px">{% trans 'ACTIVE' %}</span>{% else %}<span class="ans-key wrong" style="margin-left:8px">{% trans 'off' %}</span>{% endif %}
+	</form>
+	<p class="unimportant" style="margin:6px 0 0;word-wrap:break-word">
+		{% trans 'The captcha is baked into the static post form, so after changing this you must' %}
+		<a href="?/rebuild">{% trans 'rebuild your boards' %}</a>
+		{% trans 'for it to take effect. A category also needs at least 16 images (a mix of matching and decoy) before a challenge can be built.' %}
+	</p>
+</fieldset>
+
 {% for c in categories %}
 	<fieldset class="captcha-admin">
 		<legend>{{ c.name|e }}</legend>

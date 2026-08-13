@@ -1197,6 +1197,16 @@
 	$config['additional_javascript'][] = 'js/live-push.js';
 	// $config['additional_javascript'][] = 'js/local-time.js';
 
+	// Anime captcha activation toggle. The mod panel (?/captcha) writes/removes the flag file
+	// `inc/captcha_active.flag` so the image-grid captcha can be switched on without editing
+	// config. When active it enables the provider and loads its client script — appended AFTER
+	// jquery.min.js above so it isn't loaded before its jQuery dependency. (Boards must be
+	// rebuilt after toggling, since the captcha is baked into the static post form.)
+	if (@trim((string)@file_get_contents('inc/captcha_active.flag')) === '1') {
+		$config['captcha']['provider'] = 'anime';
+		$config['additional_javascript'][] = 'js/anime-captcha.js';
+	}
+
 	// Some scripts require jQuery. Check the comments in script files to see what's needed. When enabling
 	// jQuery, you should first empty the array so that "js/query.min.js" can be the first, and then re-add
 	// "js/inline-expanding.js" or else the inline-expanding script might not interact properly with other
